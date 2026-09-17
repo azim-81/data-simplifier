@@ -10,7 +10,7 @@ st.write("A small tool I made to clean a spreadsheet and get a quick look at the
 with st.sidebar:
     st.header("Start here")
     uploaded = st.file_uploader("Choose a CSV or Excel file", type=["csv", "xlsx"])
-    st.caption("")
+    st.caption("Made by Mohd Azeem")
 
 if uploaded is None:
     st.info("Upload a CSV or Excel file to begin.")
