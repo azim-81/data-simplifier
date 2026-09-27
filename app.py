@@ -1070,20 +1070,172 @@ with tab5:
             use_container_width=True
         )
 
-    # -----------------------------------------------------
-    # FINAL REPORT
-    # -----------------------------------------------------
+# -----------------------------------------------------
+# AUTOMATIC DATA QUALITY REPORT
+# -----------------------------------------------------
 
-    st.divider()
+st.divider()
 
-    st.subheader("📋 Final Data Quality Report")
+st.subheader("📋 Automatic Data Quality Report")
 
-    final_missing = int(
-        cleaned.isna().sum().sum()
+# BEFORE cleaning
+before_rows = len(original)
+before_columns = len(original.columns)
+before_missing = int(original.isna().sum().sum())
+before_duplicates = int(original.duplicated().sum())
+before_quality = calculate_quality_score(original)
+
+# AFTER cleaning
+after_rows = len(cleaned)
+after_columns = len(cleaned.columns)
+after_missing = int(cleaned.isna().sum().sum())
+after_duplicates = int(cleaned.duplicated().sum())
+after_quality = calculate_quality_score(cleaned)
+
+# -----------------------------------------------------
+# QUALITY SCORE
+# -----------------------------------------------------
+
+st.markdown("### 🎯 Data Quality Score")
+
+score_col1, score_col2 = st.columns(2)
+
+with score_col1:
+    st.metric(
+        "Before Cleaning",
+        f"{before_quality:.0f}%"
     )
 
-    final_duplicates = int(
-        cleaned.duplicated().sum()
+with score_col2:
+    st.metric(
+        "After Cleaning",
+        f"{after_quality:.0f}%",
+        delta=f"{after_quality - before_quality:.0f}%"
+    )
+
+# Progress bar
+st.progress(
+    min(after_quality / 100, 1.0)
+)
+
+if after_quality >= 90:
+    st.success(
+        "🟢 The cleaned dataset has a high data quality score."
+    )
+
+elif after_quality >= 70:
+    st.warning(
+        "🟡 The cleaned dataset has moderate data quality."
+    )
+
+else:
+    st.error(
+        "🔴 The dataset may still need additional cleaning."
+    )
+
+# -----------------------------------------------------
+# BEFORE VS AFTER
+# -----------------------------------------------------
+
+st.markdown("### 📊 Before vs. After")
+
+report = pd.DataFrame({
+    "Metric": [
+        "Rows",
+        "Columns",
+        "Missing Cells",
+        "Duplicate Rows"
+    ],
+    "Before": [
+        before_rows,
+        before_columns,
+        before_missing,
+        before_duplicates
+    ],
+    "After": [
+        after_rows,
+        after_columns,
+        after_missing,
+        after_duplicates
+    ]
+})
+
+report["Change"] = (
+    report["After"] - report["Before"]
+)
+
+st.dataframe(
+    report,
+    use_container_width=True,
+    hide_index=True
+)
+
+# -----------------------------------------------------
+# CHANGES MADE
+# -----------------------------------------------------
+
+st.markdown("### 🧹 Cleaning Operations")
+
+if changes:
+
+    for change in changes:
+        st.write("✅ " + change)
+
+else:
+
+    st.info(
+        "No cleaning operations were required."
+    )
+
+# -----------------------------------------------------
+# DATASET SUMMARY
+# -----------------------------------------------------
+
+st.markdown("### 📦 Dataset Summary")
+
+summary_col1, summary_col2, summary_col3 = st.columns(3)
+
+with summary_col1:
+
+    st.metric(
+        "Rows Removed",
+        f"{max(before_rows - after_rows, 0):,}"
+    )
+
+with summary_col2:
+
+    st.metric(
+        "Missing Values Handled",
+        f"{max(before_missing - after_missing, 0):,}"
+    )
+
+with summary_col3:
+
+    st.metric(
+        "Duplicates Removed",
+        f"{max(before_duplicates - after_duplicates, 0):,}"
+    )
+
+# -----------------------------------------------------
+# FINAL STATUS
+# -----------------------------------------------------
+
+st.markdown("### ✅ Final Status")
+
+if (
+    after_missing == 0
+    and after_duplicates == 0
+    and after_quality >= 90
+):
+
+    st.success(
+        "🎉 Your dataset is clean and ready for analysis."
+    )
+
+else:
+
+    st.info(
+        "Your dataset has been cleaned, but some issues may remain."
     )
 
     final_score = calculate_quality_score(
