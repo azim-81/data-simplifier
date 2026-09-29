@@ -233,9 +233,10 @@ quality_score = calculate_quality_score(df)
 # MAIN TABS
 # ---------------------------------------------------------
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs(
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
     [
         "📊 Overview",
+        "🧠 Smart Clean",
         "🧹 Clean Data",
         "🔎 Analyze",
         "📈 Visualize",
