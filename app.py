@@ -364,23 +364,100 @@ with tab2:
         "Choose the cleaning operations you want to perform."
     )
 
-    # -----------------------------------------------------
-    # MISSING VALUES
-    # -----------------------------------------------------
+ 
 
-    st.markdown("### 1. Missing Values")
+ # -----------------------------------------------------
+# MISSING VALUE HANDLING
+# -----------------------------------------------------
 
-    missing_method = st.selectbox(
-        "How should missing values be handled?",
-        [
-            "Do nothing",
-            "Remove rows containing missing values",
-            "Fill numeric values with mean",
-            "Fill numeric values with median",
-            "Fill numeric values with 0",
-            "Fill text values with mode"
-        ]
+st.markdown("### 1. 🧹 Missing Values")
+
+missing_summary = pd.DataFrame({
+    "Column": df.columns,
+    "Missing": df.isna().sum().values,
+    "Missing %": [
+        round(df[column].isna().mean() * 100, 2)
+        for column in df.columns
+    ]
+})
+
+missing_summary = missing_summary[
+    missing_summary["Missing"] > 0
+].copy()
+
+if missing_summary.empty:
+
+    st.success("✅ No missing values were found in your dataset.")
+
+else:
+
+    st.write(
+        f"Found **{missing_summary['Missing'].sum():,} missing cells** "
+        f"across **{len(missing_summary)} column(s)**."
     )
+
+    st.dataframe(
+        missing_summary,
+        use_container_width=True,
+        hide_index=True
+    )
+
+    st.markdown("#### Choose how to handle each column")
+
+    missing_actions = {}
+
+    for column in missing_summary["Column"]:
+
+        missing_count = int(
+            df[column].isna().sum()
+        )
+
+        dtype = df[column].dtype
+
+        # Automatic suggestion
+        if pd.api.types.is_numeric_dtype(dtype):
+            default_action = "Fill with median"
+
+        else:
+            default_action = "Fill with mode"
+
+        options = [
+            "Keep missing values",
+            "Remove rows",
+            "Fill with mean",
+            "Fill with median",
+            "Fill with mode",
+            "Fill with 0",
+            "Fill with custom value"
+        ]
+
+        default_index = options.index(
+            default_action
+        )
+
+        action = st.selectbox(
+            f"**{column}** — {missing_count:,} missing value(s)",
+            options,
+            index=default_index,
+            key=f"missing_action_{column}"
+        )
+
+        missing_actions[column] = action
+
+        # Custom value
+        if action == "Fill with custom value":
+
+            custom_value = st.text_input(
+                f"Value for '{column}'",
+                key=f"custom_value_{column}"
+            )
+
+            missing_actions[column] = (
+                action,
+                custom_value
+            )
+
+    st.divider()
 
     # -----------------------------------------------------
     # DUPLICATES
