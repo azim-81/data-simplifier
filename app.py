@@ -19,7 +19,7 @@ st.set_page_config(
 # TITLE
 # ---------------------------------------------------------
 
-st.title("📊 Data Simplifier")
+st.title("📊 Data Simplifier ")
 st.write(
     "Clean, understand and explore your spreadsheet with a few simple steps."
 )
