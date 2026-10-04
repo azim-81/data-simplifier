@@ -459,16 +459,79 @@ else:
 
     st.divider()
 
-    # -----------------------------------------------------
-    # DUPLICATES
-    # -----------------------------------------------------
+# -----------------------------------------------------
+# DUPLICATE ROW HANDLING
+# -----------------------------------------------------
 
-    st.markdown("### 2. Duplicate Rows")
+st.markdown("### 2. 🔁 Duplicate Rows")
+
+duplicate_count = int(df.duplicated().sum())
+
+if duplicate_count == 0:
+
+    st.success("✅ No duplicate rows were found.")
+
+    remove_duplicates = False
+
+else:
+
+    st.warning(
+        f"⚠️ Found **{duplicate_count:,} duplicate row(s)**."
+    )
+
+    # Show duplicates
+    show_duplicates = st.checkbox(
+        "Show duplicate rows",
+        value=False
+    )
+
+    if show_duplicates:
+
+        duplicate_rows = df[
+            df.duplicated(keep=False)
+        ]
+
+        st.dataframe(
+            duplicate_rows,
+            use_container_width=True,
+            hide_index=True
+        )
 
     remove_duplicates = st.checkbox(
         "Remove duplicate rows",
         value=True
     )
+
+    if remove_duplicates:
+
+        duplicate_method = st.radio(
+            "How should duplicates be handled?",
+            [
+                "Keep the first occurrence",
+                "Remove every occurrence of duplicated rows"
+            ]
+        )
+
+        if duplicate_method == "Keep the first occurrence":
+
+            rows_after = len(df.drop_duplicates())
+
+        else:
+
+            duplicated_mask = df.duplicated(
+                keep=False
+            )
+
+            rows_after = len(
+                df[~duplicated_mask]
+            )
+
+        rows_to_remove = len(df) - rows_after
+
+        st.info(
+            f"📉 This will remove approximately "
+            f"**{rows_to_remove:,} row(s)**."
+        )
 
     # -----------------------------------------------------
     # COLUMN NAMES
