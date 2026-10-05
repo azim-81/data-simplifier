@@ -995,14 +995,14 @@ with tab3:
 
 
 # =========================================================
-# TAB 4 — VISUALIZE
+# TAB 4 — VISUALIZE / CHART BUILDER
 # =========================================================
 
 with tab4:
 
-    st.subheader("📈 Visualize Your Data")
+    st.subheader("📈 Chart Builder")
 
-    cleaned = st.session_state.cleaned
+    cleaned = st.session_state.cleaned.copy()
 
     numeric = cleaned.select_dtypes(
         include=np.number
@@ -1012,145 +1012,485 @@ with tab4:
         exclude=np.number
     ).columns.tolist()
 
-    # -----------------------------------------------------
-    # HISTOGRAM
-    # -----------------------------------------------------
+    all_columns = cleaned.columns.tolist()
 
-    st.markdown("### 📊 Histogram")
+    if not all_columns:
 
-    if numeric:
-
-        histogram_column = st.selectbox(
-            "Choose a numeric column",
-            numeric,
-            key="histogram"
-        )
-
-        fig = px.histogram(
-            cleaned,
-            x=histogram_column,
-            title=f"Distribution of {histogram_column}"
-        )
-
-        st.plotly_chart(
-            fig,
-            use_container_width=True
-        )
+        st.warning("No columns are available for visualization.")
 
     else:
 
+        # -------------------------------------------------
+        # CHART TYPE
+        # -------------------------------------------------
+
+        st.markdown("### 1. Choose a chart")
+
+        chart_type = st.selectbox(
+            "Chart type",
+            [
+                "Bar Chart",
+                "Line Chart",
+                "Pie Chart",
+                "Histogram",
+                "Scatter Plot",
+                "Box Plot"
+            ]
+        )
+
+        st.divider()
+
+        # -------------------------------------------------
+        # BAR CHART
+        # -------------------------------------------------
+
+        if chart_type == "Bar Chart":
+
+            st.markdown("### 📊 Bar Chart")
+
+            if not categorical:
+
+                st.info(
+                    "A bar chart works best with categorical columns."
+                )
+
+            else:
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+
+                    x_column = st.selectbox(
+                        "Category",
+                        categorical,
+                        key="bar_x"
+                    )
+
+                with col2:
+
+                    value_options = [
+                        "Count"
+                    ] + numeric
+
+                    value_column = st.selectbox(
+                        "Value",
+                        value_options,
+                        key="bar_value"
+                    )
+
+                if value_column == "Count":
+
+                    chart_data = (
+                        cleaned[x_column]
+                        .astype(str)
+                        .value_counts()
+                        .reset_index()
+                    )
+
+                    chart_data.columns = [
+                        x_column,
+                        "Count"
+                    ]
+
+                    y_column = "Count"
+
+                else:
+
+                    chart_data = (
+                        cleaned
+                        .groupby(x_column)[value_column]
+                        .sum()
+                        .reset_index()
+                    )
+
+                    y_column = value_column
+
+                # Top N
+                top_n = st.slider(
+                    "Number of categories to show",
+                    min_value=3,
+                    max_value=min(30, len(chart_data)),
+                    value=min(10, len(chart_data)),
+                    key="bar_top_n"
+                )
+
+                sort_order = st.radio(
+                    "Sort",
+                    ["Highest first", "Lowest first"],
+                    horizontal=True,
+                    key="bar_sort"
+                )
+
+                chart_data = chart_data.sort_values(
+                    y_column,
+                    ascending=(sort_order == "Lowest first")
+                ).head(top_n)
+
+                title = st.text_input(
+                    "Chart title",
+                    f"{y_column} by {x_column}",
+                    key="bar_title"
+                )
+
+                fig = px.bar(
+                    chart_data,
+                    x=x_column,
+                    y=y_column,
+                    title=title,
+                    text_auto=True
+                )
+
+                fig.update_layout(
+                    xaxis_title=x_column,
+                    yaxis_title=y_column
+                )
+
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True
+                )
+
+        # -------------------------------------------------
+        # LINE CHART
+        # -------------------------------------------------
+
+        elif chart_type == "Line Chart":
+
+            st.markdown("### 📈 Line Chart")
+
+            if not numeric:
+
+                st.info(
+                    "A line chart requires at least one numeric column."
+                )
+
+            else:
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+
+                    x_column = st.selectbox(
+                        "X-axis",
+                        all_columns,
+                        key="line_x"
+                    )
+
+                with col2:
+
+                    y_column = st.selectbox(
+                        "Y-axis",
+                        numeric,
+                        key="line_y"
+                    )
+
+                # Try to interpret dates
+                line_data = cleaned.copy()
+
+                if line_data[x_column].dtype == "object":
+
+                    try:
+
+                        converted_dates = pd.to_datetime(
+                            line_data[x_column],
+                            errors="coerce"
+                        )
+
+                        if converted_dates.notna().mean() >= 0.7:
+
+                            line_data[x_column] = converted_dates
+                            line_data = line_data.sort_values(
+                                x_column
+                            )
+
+                    except Exception:
+                        pass
+
+                title = st.text_input(
+                    "Chart title",
+                    f"{y_column} over {x_column}",
+                    key="line_title"
+                )
+
+                fig = px.line(
+                    line_data,
+                    x=x_column,
+                    y=y_column,
+                    title=title,
+                    markers=True
+                )
+
+                fig.update_layout(
+                    xaxis_title=x_column,
+                    yaxis_title=y_column
+                )
+
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True
+                )
+
+        # -------------------------------------------------
+        # PIE CHART
+        # -------------------------------------------------
+
+        elif chart_type == "Pie Chart":
+
+            st.markdown("### 🥧 Pie Chart")
+
+            if not categorical:
+
+                st.info(
+                    "A pie chart requires a categorical column."
+                )
+
+            else:
+
+                category_column = st.selectbox(
+                    "Category",
+                    categorical,
+                    key="pie_category"
+                )
+
+                pie_data = (
+                    cleaned[category_column]
+                    .astype(str)
+                    .value_counts()
+                    .head(10)
+                    .reset_index()
+                )
+
+                pie_data.columns = [
+                    category_column,
+                    "Count"
+                ]
+
+                title = st.text_input(
+                    "Chart title",
+                    f"Distribution of {category_column}",
+                    key="pie_title"
+                )
+
+                fig = px.pie(
+                    pie_data,
+                    names=category_column,
+                    values="Count",
+                    title=title,
+                    hole=0.35
+                )
+
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True
+                )
+
+        # -------------------------------------------------
+        # HISTOGRAM
+        # -------------------------------------------------
+
+        elif chart_type == "Histogram":
+
+            st.markdown("### 📊 Histogram")
+
+            if not numeric:
+
+                st.info(
+                    "No numeric columns were found."
+                )
+
+            else:
+
+                column = st.selectbox(
+                    "Numeric column",
+                    numeric,
+                    key="hist_column"
+                )
+
+                bins = st.slider(
+                    "Number of bins",
+                    min_value=5,
+                    max_value=100,
+                    value=30,
+                    key="hist_bins"
+                )
+
+                title = st.text_input(
+                    "Chart title",
+                    f"Distribution of {column}",
+                    key="hist_title"
+                )
+
+                fig = px.histogram(
+                    cleaned,
+                    x=column,
+                    nbins=bins,
+                    title=title
+                )
+
+                fig.update_layout(
+                    xaxis_title=column,
+                    yaxis_title="Count"
+                )
+
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True
+                )
+
+        # -------------------------------------------------
+        # SCATTER PLOT
+        # -------------------------------------------------
+
+        elif chart_type == "Scatter Plot":
+
+            st.markdown("### 🔵 Scatter Plot")
+
+            if len(numeric) < 2:
+
+                st.info(
+                    "At least two numeric columns are required."
+                )
+
+            else:
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+
+                    x_column = st.selectbox(
+                        "X-axis",
+                        numeric,
+                        key="scatter_x_new"
+                    )
+
+                with col2:
+
+                    y_options = [
+                        column
+                        for column in numeric
+                        if column != x_column
+                    ]
+
+                    y_column = st.selectbox(
+                        "Y-axis",
+                        y_options,
+                        key="scatter_y_new"
+                    )
+
+                color_column = None
+
+                if categorical:
+
+                    use_color = st.checkbox(
+                        "Color points by category",
+                        key="scatter_color"
+                    )
+
+                    if use_color:
+
+                        color_column = st.selectbox(
+                            "Color column",
+                            categorical,
+                            key="scatter_category"
+                        )
+
+                title = st.text_input(
+                    "Chart title",
+                    f"{y_column} vs {x_column}",
+                    key="scatter_title"
+                )
+
+                fig = px.scatter(
+                    cleaned,
+                    x=x_column,
+                    y=y_column,
+                    color=color_column,
+                    title=title,
+                    hover_data=all_columns
+                )
+
+                fig.update_layout(
+                    xaxis_title=x_column,
+                    yaxis_title=y_column
+                )
+
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True
+                )
+
+        # -------------------------------------------------
+        # BOX PLOT
+        # -------------------------------------------------
+
+        elif chart_type == "Box Plot":
+
+            st.markdown("### 📦 Box Plot")
+
+            if not numeric:
+
+                st.info(
+                    "No numeric columns were found."
+                )
+
+            else:
+
+                column = st.selectbox(
+                    "Numeric column",
+                    numeric,
+                    key="box_column_new"
+                )
+
+                category = None
+
+                if categorical:
+
+                    add_category = st.checkbox(
+                        "Group by category",
+                        key="box_category_enable"
+                    )
+
+                    if add_category:
+
+                        category = st.selectbox(
+                            "Category",
+                            categorical,
+                            key="box_category"
+                        )
+
+                title = st.text_input(
+                    "Chart title",
+                    f"Distribution of {column}",
+                    key="box_title"
+                )
+
+                fig = px.box(
+                    cleaned,
+                    x=category,
+                    y=column,
+                    title=title,
+                    points="outliers"
+                )
+
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True
+                )
+
+        # -------------------------------------------------
+        # DOWNLOAD CHART
+        # -------------------------------------------------
+
+        st.divider()
+
+        st.markdown("### 💡 Chart Tips")
+
         st.info(
-            "No numeric columns found."
+            "Use Bar Charts for category comparisons, "
+            "Line Charts for trends, Pie Charts for proportions, "
+            "Histograms for distributions, Scatter Plots for relationships, "
+            "and Box Plots for distributions and outliers."
         )
-
-    # -----------------------------------------------------
-    # BAR CHART
-    # -----------------------------------------------------
-
-    st.markdown("### 📊 Category Chart")
-
-    if categorical:
-
-        category_column = st.selectbox(
-            "Choose a category column",
-            categorical,
-            key="category"
-        )
-
-        counts = (
-            cleaned[category_column]
-            .astype(str)
-            .value_counts()
-            .head(15)
-            .reset_index()
-        )
-
-        counts.columns = [
-            category_column,
-            "Count"
-        ]
-
-        fig = px.bar(
-            counts,
-            x=category_column,
-            y="Count",
-            title=f"Most Common Values in {category_column}"
-        )
-
-        st.plotly_chart(
-            fig,
-            use_container_width=True
-        )
-
-    else:
-
-        st.info(
-            "No categorical columns found."
-        )
-
-    # -----------------------------------------------------
-    # SCATTER PLOT
-    # -----------------------------------------------------
-
-    st.markdown("### 🔵 Scatter Plot")
-
-    if len(numeric) >= 2:
-
-        x_axis = st.selectbox(
-            "X-axis",
-            numeric,
-            key="scatter_x"
-        )
-
-        y_options = [
-            column for column in numeric
-            if column != x_axis
-        ]
-
-        y_axis = st.selectbox(
-            "Y-axis",
-            y_options,
-            key="scatter_y"
-        )
-
-        fig = px.scatter(
-            cleaned,
-            x=x_axis,
-            y=y_axis,
-            title=f"{y_axis} vs {x_axis}"
-        )
-
-        st.plotly_chart(
-            fig,
-            use_container_width=True
-        )
-
-    # -----------------------------------------------------
-    # BOX PLOT
-    # -----------------------------------------------------
-
-    st.markdown("### 📦 Box Plot")
-
-    if numeric:
-
-        box_column = st.selectbox(
-            "Choose a numeric column",
-            numeric,
-            key="box"
-        )
-
-        fig = px.box(
-            cleaned,
-            y=box_column,
-            title=f"Box Plot of {box_column}"
-        )
-
-        st.plotly_chart(
-            fig,
-            use_container_width=True
-        )
-
-
 # =========================================================
 # TAB 5 — EXPORT
 # =========================================================
