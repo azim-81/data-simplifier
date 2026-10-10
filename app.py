@@ -865,6 +865,58 @@ else:
 # TAB 3 — ANALYZE
 # =========================================================
 
+# -----------------------------------------------------
+# DATE COLUMN DETECTION
+# -----------------------------------------------------
+
+st.markdown("### 📅 Date Columns")
+
+date_columns = []
+
+for column in cleaned.columns:
+
+    # Already a datetime column
+    if pd.api.types.is_datetime64_any_dtype(
+        cleaned[column]
+    ):
+        date_columns.append(column)
+        continue
+
+    # Check text columns
+    if cleaned[column].dtype == "object":
+
+        sample = cleaned[column].dropna()
+
+        if not sample.empty:
+
+            converted = pd.to_datetime(
+                sample,
+                errors="coerce"
+            )
+
+            success_rate = converted.notna().mean()
+
+            if success_rate >= 0.70:
+
+                date_columns.append(column)
+
+
+if date_columns:
+
+    st.success(
+        f"📅 Detected {len(date_columns)} possible date column(s)."
+    )
+
+    for column in date_columns:
+
+        st.write(f"• **{column}**")
+
+else:
+
+    st.info(
+        "No obvious date columns were detected."
+    )
+
 with tab3:
 
     st.subheader("🔎 Analyze Your Dataset")
